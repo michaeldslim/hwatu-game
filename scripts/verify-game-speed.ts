@@ -12,8 +12,8 @@ import {
 const speeds = ['slow', 'medium', 'fast'] as const;
 
 const SIMPLE_TURN_TARGETS: Record<(typeof speeds)[number], number> = {
-  slow: 3000,
-  medium: 2000,
+  slow: 3420,
+  medium: 2280,
   fast: 1000,
 };
 

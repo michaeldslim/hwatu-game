@@ -6,6 +6,7 @@ export interface GameSpeedTimings {
   collect: number;
   stack: number;
   pauseAfterPlay: number;
+  pauseAfterCollect: number;
   pauseAfterFlip: number;
   pauseBeforeCollect: number;
   flipRevealHold: number;
@@ -20,6 +21,7 @@ export const GAME_SPEED_TIMINGS: Record<GameSpeed, GameSpeedTimings> = {
     collect: 340,
     stack: 200,
     pauseAfterPlay: 170,
+    pauseAfterCollect: 420,
     pauseAfterFlip: 420,
     pauseBeforeCollect: 420,
     flipRevealHold: 420,
@@ -32,6 +34,7 @@ export const GAME_SPEED_TIMINGS: Record<GameSpeed, GameSpeedTimings> = {
     collect: 255,
     stack: 170,
     pauseAfterPlay: 150,
+    pauseAfterCollect: 280,
     pauseAfterFlip: 305,
     pauseBeforeCollect: 210,
     flipRevealHold: 300,
@@ -44,6 +47,7 @@ export const GAME_SPEED_TIMINGS: Record<GameSpeed, GameSpeedTimings> = {
     collect: 220,
     stack: 140,
     pauseAfterPlay: 150,
+    pauseAfterCollect: 200,
     pauseAfterFlip: 250,
     pauseBeforeCollect: 200,
     flipRevealHold: 200,
@@ -73,6 +77,7 @@ export function estimateMatchedTurnMs(timing: GameSpeedTimings): number {
     timing.playHand +
     timing.pauseBeforeCollect +
     timing.collect +
+    timing.pauseAfterCollect +
     timing.flipDeck +
     timing.flipRevealHold +
     timing.pauseAfterFlip +

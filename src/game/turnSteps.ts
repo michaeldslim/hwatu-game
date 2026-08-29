@@ -350,6 +350,10 @@ export function buildTurnSteps(
   }
 
   if (flippedCard) {
+    if (handCollect.length > 0) {
+      steps.push({ type: 'pause', durationMs: timing.pauseAfterCollect });
+    }
+
     const flipTarget = resolveFlipDeckTarget(
       tableBeforeFlip,
       flippedCard,
