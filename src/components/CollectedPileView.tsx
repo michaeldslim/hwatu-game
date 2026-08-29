@@ -1,6 +1,11 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { getCardById } from '../cards/getCardById';
-import { CARD_BORDER_RADIUS, CARD_DIMENSIONS } from '../constants/layout';
+import {
+  CARD_BORDER_RADIUS,
+  CARD_DIMENSIONS,
+  COLLECTED_PILE_MAX_HEIGHT,
+} from '../constants/layout';
+import { colors } from '../constants/colors';
 import type { CardId } from '../types/gameState';
 import type { CardDefinition, CardType } from '../types/hwatu';
 import { LayoutAnchor, anchorKeys } from './LayoutAnchor';
@@ -46,9 +51,15 @@ function groupByType(cardIds: CardId[]): Record<CardType, CardDefinition[]> {
 interface CollectedPileViewProps {
   cardIds: CardId[];
   playerIndex?: number;
+  /** Shown above the tray so multi-player piles are identifiable */
+  ownerLabel?: string;
 }
 
-export function CollectedPileView({ cardIds, playerIndex = 0 }: CollectedPileViewProps) {
+export function CollectedPileView({
+  cardIds,
+  playerIndex = 0,
+  ownerLabel,
+}: CollectedPileViewProps) {
   if (cardIds.length === 0) {
     return null;
   }
@@ -64,74 +75,96 @@ export function CollectedPileView({ cardIds, playerIndex = 0 }: CollectedPileVie
   };
 
   return (
-    <LayoutAnchor anchorKey={anchorKeys.pile(playerIndex)} style={styles.tray}>
-      <View style={styles.split}>
-        <View style={styles.leftColumn}>
-          {visibleScoringTypes.map((type, rowIndex) => {
-            const cards = groups[type];
+    <View style={styles.wrapper}>
+      {ownerLabel ? <Text style={styles.ownerLabel}>{ownerLabel}</Text> : null}
+      <LayoutAnchor anchorKey={anchorKeys.pile(playerIndex)} style={styles.tray}>
+      <ScrollView
+        style={styles.trayScroll}
+        contentContainerStyle={styles.trayScrollContent}
+        nestedScrollEnabled
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.split}>
+          <View style={styles.leftColumn}>
+            {visibleScoringTypes.map((type, rowIndex) => {
+              const cards = groups[type];
 
-            return (
-              <View
-                key={type}
-                style={[
-                  styles.rowWrapper,
-                  {
-                    marginLeft: rowIndex * ROW_HORIZONTAL_OFFSET,
-                    zIndex: rowIndex + 1,
-                  },
-                  rowIndex > 0 && { marginTop: -ROW_VERTICAL_OVERLAP },
-                ]}
-              >
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={[styles.row, styles.spreadRow]}
+              return (
+                <View
+                  key={type}
+                  style={[
+                    styles.rowWrapper,
+                    {
+                      marginLeft: rowIndex * ROW_HORIZONTAL_OFFSET,
+                      zIndex: rowIndex + 1,
+                    },
+                    rowIndex > 0 && { marginTop: -ROW_VERTICAL_OVERLAP },
+                  ]}
                 >
-                  {cards.map((card) => (
-                    <CardView key={card.id} card={card} size="pile" style={cardStyle} />
-                  ))}
-                </ScrollView>
-              </View>
-            );
-          })}
-        </View>
-
-        {junkCards.length > 0 ? (
-          <View style={styles.rightColumn}>
-            {junkRows.map((rowCards, rowIndex) => (
-              <View
-                key={`junk-row-${rowIndex}`}
-                style={[
-                  styles.junkRowWrapper,
-                  { zIndex: rowIndex + 1 },
-                  rowIndex > 0 && { marginTop: -ROW_VERTICAL_OVERLAP },
-                ]}
-              >
-                <View style={styles.junkRow}>
-                  {rowCards.map((card, index) => (
-                    <CardView
-                      key={card.id}
-                      card={card}
-                      size="pile"
-                      style={[
-                        cardStyle,
-                        index > 0 && { marginLeft: -JUNK_OVERLAP },
-                      ]}
-                    />
-                  ))}
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    nestedScrollEnabled
+                    contentContainerStyle={[styles.row, styles.spreadRow]}
+                  >
+                    {cards.map((card) => (
+                      <CardView key={card.id} card={card} size="pile" style={cardStyle} />
+                    ))}
+                  </ScrollView>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
-        ) : null}
-      </View>
-    </LayoutAnchor>
+
+          {junkCards.length > 0 ? (
+            <View style={styles.rightColumn}>
+              {junkRows.map((rowCards, rowIndex) => (
+                <View
+                  key={`junk-row-${rowIndex}`}
+                  style={[
+                    styles.junkRowWrapper,
+                    { zIndex: rowIndex + 1 },
+                    rowIndex > 0 && { marginTop: -ROW_VERTICAL_OVERLAP },
+                  ]}
+                >
+                  <View style={styles.junkRow}>
+                    {rowCards.map((card, index) => (
+                      <CardView
+                        key={card.id}
+                        card={card}
+                        size="pile"
+                        style={[
+                          cardStyle,
+                          index > 0 && { marginLeft: -JUNK_OVERLAP },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      </ScrollView>
+      </LayoutAnchor>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    gap: 4,
+    paddingHorizontal: 16,
+  },
+  ownerLabel: {
+    color: colors.cream,
+    fontSize: 12,
+    fontWeight: '600',
+    opacity: 0.75,
+    paddingLeft: 4,
+  },
   tray: {
-    marginHorizontal: 12,
+    marginHorizontal: 0,
     paddingHorizontal: 8,
     paddingTop: 6,
     paddingBottom: 8,
@@ -139,6 +172,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.22)',
     borderWidth: 1,
     borderColor: 'rgba(245, 230, 200, 0.12)',
+  },
+  trayScroll: {
+    maxHeight: COLLECTED_PILE_MAX_HEIGHT,
+  },
+  trayScrollContent: {
+    flexGrow: 1,
   },
   split: {
     flexDirection: 'row',

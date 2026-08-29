@@ -41,6 +41,8 @@ export type TranslationKey =
   | 'game.flipped'
   | 'game.target'
   | 'game.yourHand'
+  | 'game.collected'
+  | 'game.yourCollected'
   | 'game.yaku.godori'
   | 'game.yaku.hongdan'
   | 'game.yaku.cheongdan'
@@ -183,6 +185,8 @@ const en: Record<TranslationKey, string> = {
   'game.flipped': 'Flipped',
   'game.target': 'Target {score} · {mode}',
   'game.yourHand': 'Your Hand',
+  'game.collected': 'Collected',
+  'game.yourCollected': 'Your collected',
   'game.yaku.godori': 'Godori!',
   'game.yaku.hongdan': 'Hongdan!',
   'game.yaku.cheongdan': 'Cheongdan!',
@@ -344,6 +348,8 @@ const ko: Record<TranslationKey, string> = {
   'game.flipped': '방금 뒤집음',
   'game.target': '목표 {score}점 · {mode}',
   'game.yourHand': '내 손패',
+  'game.collected': '따낸 패',
+  'game.yourCollected': '내가 딴 패',
   'game.yaku.godori': '고도리!',
   'game.yaku.hongdan': '홍단!',
   'game.yaku.cheongdan': '청단!',
