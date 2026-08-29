@@ -1,6 +1,6 @@
 ---
 name: Hwatu Mobile App
-overview: React Native + Expo + TypeScript. 항상 Human vs AI. Phase 4 완료 — 고스톱 3P·화투 심플·고급 규칙(쪽·따닥·폭탄·흔들기)·정산(고박·피박·광박)·나가리·국화잔 선택. Phase 3+ polish — 약 콜아웃·gather-long·손패 가로 스크롤·보드 세로 스크롤(3P)·애니 앵커 remeasure·collect sourceTableIndex·AI 손패 mini·턴 페이싱·playHand 타겟 슬롯·특수기술 모달·**table-card 앵커 + 슬롯 타깃 비행 + 뻑 바운스 + AI 특수 햅틱만 + 손패/바닥 카드 소형화**. Post-Phase 4 — 턴 힌트(설정 토글·시안 글로우·점수+약 진행 휴리스틱). **승진제** v1 완료·수동 QA 통과(인턴→사장, 홈/결과/설정 UI, PromotionOverlay). Phase 5 — EAS 빌드·스토어 배포. 딜 애니메이션·조커 카드·Career 전용 화면·Rules 승진 섹션은 미구현(optional).
+overview: React Native + Expo + TypeScript. 항상 Human vs AI. Phase 4 완료 — 고스톱 3P·화투 심플·고급 규칙(쪽·따닥·폭탄·흔들기)·정산(고박·피박·광박)·나가리·국화잔 선택. Phase 3+ polish — 약 콜아웃·gather-long·손패 가로 스크롤·보드 세로 스크롤(3P)·애니 앵커 remeasure·collect sourceTableIndex·AI 손패 mini·턴 페이싱·playHand 타겟 슬롯·특수기술 모달·**table-card 앵커 + 슬롯 타깃 비행 + 뻑 바운스 + AI 특수 햅틱만 + 손패/바닥 카드 소형화**. Post-Phase 4 — 턴 힌트(설정 토글·시안 글로우·점수+약 진행 휴리스틱). **승진제** v1 완료·수동 QA 통과(인턴→사장, 홈/결과/설정 UI, PromotionOverlay). **Mobile board UX** — 손패 하단 고정 dock·맥락별 스크롤(`ViewportFocus`)·수집 더미 maxHeight·3P AI 블록(바+더미+ownerLabel)·바닥 헤더 제거·덱 invisible anchor·AI/덱 비행 앞면. Phase 5 — EAS 빌드·스토어 배포. 딜 애니메이션·조커 카드·Career 전용 화면·Rules 승진 섹션은 미구현(optional).
 todos:
   - id: scaffold
     content: Expo + TypeScript 프로젝트 스캐폴딩, 앱 아이콘, 기본 폴더 구조
@@ -179,8 +179,8 @@ December (12): Bright(rain), Junk×2 + double-junk (counts as 2 피)
 
 - Use **`expo-image`** (not bare `Image`) for disk cache + transition
 - **Never** upscale beyond `@3x` — always ship sharp source art
-- Table cards: **60×97pt** display (`CARD_DIMENSIONS.table`; was 64×103)
-- Hand cards: **68×110pt** display (`CARD_DIMENSIONS.hand`; was 72×116)
+- Table cards: **56×91pt** display (`CARD_DIMENSIONS.table`; was 60×97 → 64×103)
+- Hand cards: **64×104pt** display (`CARD_DIMENSIONS.hand`; was 68×110 → 72×116)
 - Opponent face-down hand: **mini** size **22×36pt** (compact fan above collected piles)
 - Provide **subtle drop shadow** via wrapper View, not baked into PNG (keeps assets reusable)
 - **Border radius** applied in CSS (`borderRadius: 6`) — do not bake rounded corners into master PNG
@@ -254,7 +254,7 @@ src/
     SettingsToggleRow.tsx  # switch row for settings
   constants/
     colors.ts
-    layout.ts              # CARD_DIMENSIONS — hand 68×110, table 60×97, mini 22×36 (AI hand)
+    layout.ts              # CARD_DIMENSIONS — hand 64×104, table 56×91, mini 22×36; COLLECTED_PILE_MAX_HEIGHT; ViewportFocus
     gameOptions.ts         # AI difficulty, game mode, language labels (EN/KO)
   settings/
     SettingsProvider.tsx   # AsyncStorage-backed settings context
@@ -947,24 +947,29 @@ No Go/Stop — play until cards exhausted. Per-card scoring (`calculateHwatuSimp
 
 ### Game Screen (portrait) — 맞고 2P / 고스톱 3P ✅
 
-Fixed **top bar** (leave + optional **특수/Special** button when 흔들기/폭탄 available + turn status text). Everything below scrolls vertically in one `ScrollView` (`boardScroll`) — needed for 3P (two AI rows + piles + table + human pile + hand). Scroll disabled while `isAnimating`; `remeasureAll()` on scroll end keeps flight anchors accurate.
+Fixed **top bar** (leave + optional **특수/Special** button when 흔들기/폭탄 available + turn status text). **Scrollable board** (`boardScroll`) for AI sections + table + human collected pile; **human hand pinned** in fixed `bottomHandDock` below scroll (always visible on narrow phones / during collect animation). Scroll disabled while `isAnimating`; `remeasureAll()` on scroll end. Animation viewport uses **`ViewportFocus`**: human turn → `preserve` (no scroll jump); AI turn / deck flip → scroll to table section (not `scrollTo(0)`).
 
 ```
 ┌─────────────────────────────┐
-│ ← Leave  [특수]   Your turn │  ← fixed top bar (특수 when shake/bomb available)
+│ ← Leave  [특수]   Your turn │  ← fixed top bar
 ├─────────────────────────────┤
 │ ↕ scrollable board          │
-│ AI · [difficulty]  N pts    │
-│ [face-down mini fan]        │  ← HandFanView size="mini"
-│ [AI collected pile tray]    │  ← CollectedPileView (×2 in 3P)
-│ TABLE · deck:#  [flipped]   │  ← deck anchor in table header
-│ [face-up table grid]        │
-│ [your collected pile tray]  │
-│ YOUR HAND (fan arc)         │  ← HandFanView + horizontal scroll
+│ AI 1 · [difficulty]  N pts  │
+│ [face-down mini fan]        │
+│ AI 1 · Collected  (3P label)│  ← ownerLabel on pile
+│ [AI 1 collected tray]       │  ← CollectedPileView maxHeight + inner scroll
+│ ─────────────────────────── │
+│ AI 2 · … (3P only)          │  ← opponentSection per AI
+│ [face-up table grid]        │  ← no "Table / N cards / Deck" header
+│ [your collected + label]    │
+├─────────────────────────────┤
+│ YOUR HAND (fan, fixed)      │  ← HandFanView + horizontal scroll
 └─────────────────────────────┘
 ```
 
-**Collected pile layout** (`CollectedPileView` — 70/30 tray):
+**3P layout:** each opponent is one **`opponentSection`** — `OpponentBar` + `CollectedPileView` stacked (pile directly under that AI's hand). **3P pile labels:** `AI 1 · Collected` / `AI 2 · Collected` (`game.collected`); human pile: `game.yourCollected`. **2P:** single AI section; no pile owner label (redundant).
+
+**Collected pile layout** (`CollectedPileView` — 70/30 tray, **`maxHeight` 136pt** with vertical scroll when overflow):
 
 ```
 ┌────────────────────────────────────┐
@@ -973,8 +978,6 @@ Fixed **top bar** (leave + optional **특수/Special** button when 흔들기/폭
 │     [열끗]        right 30%: 피    │     right: 5/row, overlap, top-aligned
 └────────────────────────────────────┘
 ```
-
-3P 고스톱: two AI rows at top (same difficulty) — **implemented**.
 
 **Implemented in `app/game.tsx`:**
 - Mode-aware deal via `createGame` (matgo 2P / gostop 3P / hwatu 2P)
@@ -986,11 +989,13 @@ Fixed **top bar** (leave + optional **특수/Special** button when 흔들기/폭
 - **Scoring** — live score display; yaku engine (`scoring.ts`)
 - **Go/Stop** — human modal (`GoStopModal`); AI auto-decides by difficulty (`goStop.ts`)
 - **Result screen** — `app/result.tsx` with breakdown + play again
-- **Collected pile UI** — `CollectedPileView` for human + AI (`pile` card size 32×52pt)
+- **Collected pile UI** — `CollectedPileView` for human + AI (`pile` card size 32×52pt); optional **`ownerLabel`**; tray **`maxHeight`** + nested vertical scroll
 - **Fan hand layout** — `HandFanView` with rotation + overlap; **horizontal scroll** when fan width exceeds viewport (narrow phones / many cards)
 - Compact game header (back + turn hint only — fixed above scroll)
-- **Unified board scroll** — opponents → AI piles → table (deck count in header) → human pile → hand; scroll locks during animation
-- Deck count in table section header (`LayoutAnchor` deck slot); last-flipped preview above table grid
+- **Board layout** — scroll: AI opponent sections → table → human collected pile; **fixed bottom hand dock** (not in ScrollView)
+- **Viewport scroll** — `prepareAnimationViewport(focus?)`: `preserve` on human turn start; `{ kind: 'table' }` on AI turn / before `flipDeck`; removed `scrollTo(0)`
+- **Deck anchor** — invisible `LayoutAnchor` in table grid (top-right, `opacity: 0`); no table/deck count header text
+- Last-flipped preview above table grid when applicable
 - **AI opponent hand** — `HandFanView` `size="mini"` (22×36pt); `hiddenCardIds` during in-flight cards
 - **Sound + haptics** — `playCard` / `flipCard` per animation step; haptic on collect; **yaku** sound + success haptic on human yaku; **AI 흔들기/폭탄/go callout** — haptic only (no card/goStop sfx on special AI turns)
 - **Yaku callout** — `yaku.ts` detects 3rd godori·홍단·청단·초단 card; `YakuCalloutOverlay` (dim backdrop, gold banner, per-yaku accent); queued if multiple complete in one turn
@@ -1083,7 +1088,7 @@ Keep **domain rules** in `turnEngine.ts`; add a thin **presentation layer**:
 | `buildTurnSteps(before, after)` or phased engine calls | Derive animation steps from state diff, or split `playHandCard` into apply-play → apply-flip → apply-collect |
 | `AnimationController` hook | Queue steps, `isAnimating` locks input, runs Reanimated transitions |
 | `FlyingCard` overlay | Absolute-positioned `CardView` above board; not tied to ScrollView layout during flight |
-| Layout anchors | Hand slots by card id; **table piles by face `table-card-{cardId}`**; empty slot `table-slot-{index}`; deck, collected tray; `remeasureAll()` before each step and after scroll |
+| Layout anchors | Hand slots by card id; **table piles by face `table-card-{cardId}`**; empty slot `table-slot-{index}`; **invisible deck** anchor in table grid; collected tray; `remeasureAll()` before each step and after scroll |
 | `game.tsx` | Renders logical board from **committed** state; overlay shows **in-flight** cards until step completes |
 
 **Recommended:** phased commits inside `useMatgoGame` — reducer actions `PLAY_HAND`, `FLIP_DECK`, `COLLECT` — so animation hooks between dispatches. Alternative: single dispatch + `buildTurnSteps(prev, next)` replay (less engine change, harder to sync mid-turn choices).
@@ -1092,9 +1097,9 @@ Keep **domain rules** in `turnEngine.ts`; add a thin **presentation layer**:
 
 | Step | Motion | Timing | Notes |
 |------|--------|--------|-------|
-| **Play hand** | Hand anchor → **matched pile or empty slot** | speed-tuned (`gameSpeed`) | `targetTableCardId` + `resolveTableAnchor`; not `tableCenter` |
+| **Play hand** | Hand anchor → **matched pile or empty slot**; **face-up in flight** (AI + human) | speed-tuned (`gameSpeed`) | `targetTableCardId` + `resolveTableAnchor`; not `tableCenter` |
 | **Pause before collect** | Hold on table | speed-tuned | After play when hand match collects; before flip-match collect |
-| **Flip deck** | Deck anchor → **target pile or empty slot**; face-up reveal | speed-tuned | Skips premature table add when landing on existing pile (뻑/collect) |
+| **Flip deck** | Invisible deck anchor → **target pile or empty slot**; **face-up in flight** (no flip-on-arrival) | speed-tuned | Skips premature table add when landing on existing pile (뻑/collect) |
 | **Collect** | Table pile anchor → collected tray | speed-tuned | `sourceTableCardId` for stable origin when indices shift mid-turn |
 | **뻑 stack** | Flip to pair, then **spring bounce** at pile | `stack` timing (~140–200ms) | `FlyingCard.bounceOnArrival`; no collect flight |
 | **No match** | Play + flip land on table only | — | Highlight optional |
@@ -1131,14 +1136,14 @@ src/
     YakuCalloutOverlay.tsx # yaku celebration overlay
     LayoutAnchor.tsx       # onLayout anchor registry + remeasureAll / subscribeRemeasure
   i18n/
-    translations.ts        # EN/KO string catalog (+ game.yaku.*)
+    translations.ts        # EN/KO string catalog (+ game.yaku.*, game.collected, game.yourCollected)
     useTranslation.ts      # hook wired to Settings language
 ```
 
 ### Acceptance criteria (animation slice)
 
 - [x] Playing a hand card visibly moves from hand to table before flip
-- [x] Deck flip is visible (not instant face-up on table)
+- [x] Deck flip is visible (face-up flight from invisible deck anchor to table)
 - [x] Collection moves cards into CollectedPileView (not instant pile update)
 - [x] AI turns use the same motion (mirrored)
 - [x] No double-tap or illegal plays while `isAnimating`
@@ -1188,7 +1193,7 @@ interface MatgoGameState {
 }
 ```
 
-**Phase 4 complete** — 3P gostop, hwatu simple, advanced rules, settlement, sep cup choice. **Post-Phase 4 polish** — yaku callout, gather-long on yaku, hand horizontal scroll, unified board vertical scroll (3P), `LayoutAnchor.remeasureAll`, collect `sourceTableIndex`, AI `mini` hand cards, turn pacing, play-hand target slot fix, special-move modal, home subtitle, settings-as-setup, 2P human-always-dealer, **turn hints**, **table-card anchors + slot-targeted flights + 뻑 bounce**, **AI special haptics-only**, **hand/table card sizing**.
+**Phase 4 complete** — 3P gostop, hwatu simple, advanced rules, settlement, sep cup choice. **Post-Phase 4 polish** — yaku callout, gather-long on yaku, hand horizontal scroll, unified board vertical scroll (3P), `LayoutAnchor.remeasureAll`, collect `sourceTableIndex`, AI `mini` hand cards, turn pacing, play-hand target slot fix, special-move modal, home subtitle, settings-as-setup, 2P human-always-dealer, **turn hints**, **table-card anchors + slot-targeted flights + 뻑 bounce**, **AI special haptics-only**, **hand/table card sizing (64×104 / 56×91)**, **mobile board UX** (pinned hand dock, `ViewportFocus` scroll, pile maxHeight, 3P opponent sections + pile labels, invisible deck anchor, face-up AI/deck flights).
 
 ---
 
@@ -1247,7 +1252,7 @@ interface MatgoGameState {
   - [x] `TurnStep` / `FlyingCard` presentation layer
 - [x] **Yaku celebration** — `yaku.ts` + `YakuCalloutOverlay` + `gather-long.mp3` on human godori·단 complete
 - [x] **Hand scroll** — `HandFanView` horizontal scroll on narrow screens / large hands
-- [x] **Board scroll** — single vertical `ScrollView` for full 3P layout; scroll disabled during animation; remeasure anchors on scroll end
+- [x] **Board scroll** — vertical `ScrollView` for AI sections + table + human pile; **human hand fixed** in `bottomHandDock`; scroll disabled during animation; `ViewportFocus` context scroll (no `scrollTo(0)`)
 - [x] **Animation anchor sync** — `remeasureAll()` + double-RAF before each turn step; collect steps carry `sourceTableIndex`
 - [x] **AI mini hand** — opponent face-down fan uses `CardSize 'mini'` (22×36pt)
 - [ ] Deal animation (optional — cards fly from deck to hand/table on new hand) — deferred
@@ -1396,14 +1401,18 @@ interface MatgoGameState {
 
 ## Acceptance Criteria — Board layout & animation sync ✅
 
-- [x] 고스톱 3P board fits on phone via vertical scroll (opponents, piles, table, human hand)
+- [x] 고스톱 3P board fits on phone via vertical scroll (AI sections, table, human collected pile); **human hand always visible** (fixed bottom dock)
 - [x] Board scroll disabled while `isAnimating`; re-enabled after turn completes
 - [x] `remeasureAll()` runs on scroll end and before each animation step
+- [x] Animation viewport: human turn preserves scroll; AI turn / flip scrolls to **table** section (`TABLE_SCROLL_PADDING`)
+- [x] 3P: each AI's collected pile directly under that AI's bar; **owner labels** on piles (`AI N · Collected`, `Your collected`)
+- [x] Collected pile trays capped at **`COLLECTED_PILE_MAX_HEIGHT`** with inner vertical scroll
 - [x] Collect animation flies from matched pile face card (`sourceTableCardId`), not deck fallback
 - [x] Flip/play flights target pile face card id; empty slot uses `table-slot-{index}`
 - [x] AI opponent hands render as compact `mini` face-down fan; in-flight cards hidden via `hiddenCardIds`
-- [x] Deck pile anchor lives in table section header (not a separate bottom row)
-- [x] Hand/table card display sizes reduced slightly (68×110 hand, 60×97 table) for tighter board fit
+- [x] Deck anchor: **invisible** marker in table grid (flip animation origin); no table/deck count header
+- [x] Hand/table card sizes **64×104 / 56×91** for tighter mobile fit
+- [x] AI hand play + deck flip: cards fly **face-up** (no back-side flight / flip-on-arrival)
 - [x] AI shake/bomb turns and AI Go callout: haptic feedback only (no play/flip/goStop sfx)
 
 ## Acceptance Criteria — Turn hints ✅
