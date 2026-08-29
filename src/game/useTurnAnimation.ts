@@ -8,12 +8,13 @@ import {
   buildTurnSteps,
   type TurnStep,
 } from './turnSteps';
+import type { ViewportFocus } from '../constants/layout';
 import type { GameSpeedTimings } from './gameSpeed';
 
 interface UseTurnAnimationOptions {
   hapticsEnabled: boolean;
   stepTiming: GameSpeedTimings;
-  prepareViewport?: () => Promise<void>;
+  prepareViewport?: (focus?: ViewportFocus) => Promise<void>;
 }
 
 function delay(ms: number): Promise<void> {
@@ -82,7 +83,7 @@ export function useTurnAnimation({
             from,
             to: resolveTableAnchor(step.targetTableIndex, step.targetTableCardId),
             size: 'hand',
-            faceDown: step.playerIndex !== 0,
+            faceDown: false,
             flipOnArrival: false,
             durationMs: stepTiming.playHand,
           };
@@ -95,9 +96,8 @@ export function useTurnAnimation({
             from: deckFrom,
             to: resolveTableAnchor(step.targetTableIndex, step.targetTableCardId),
             size: 'table',
-            faceDown: true,
-            flipOnArrival: true,
-            flipRevealHoldMs: stepTiming.flipRevealHold,
+            faceDown: false,
+            flipOnArrival: false,
             durationMs: stepTiming.flipDeck,
           };
         }
@@ -183,7 +183,7 @@ export function useTurnAnimation({
 
       await waitForNextFrame();
       if (step.type === 'flipDeck') {
-        await prepareViewport?.();
+        await prepareViewport?.({ kind: 'table' });
       }
       await remeasureAll();
       await waitForNextFrame();
@@ -209,7 +209,9 @@ export function useTurnAnimation({
       let visual = before;
       setDisplayGame(before);
       await waitForNextFrame();
-      await prepareViewport?.();
+      const humanIndex = before.players.findIndex((player) => player.isHuman);
+      const isHumanTurn = before.currentPlayerIndex === humanIndex;
+      await prepareViewport?.(isHumanTurn ? { kind: 'preserve' } : { kind: 'table' });
       await remeasureAll();
 
       for (const step of steps) {

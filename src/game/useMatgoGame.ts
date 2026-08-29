@@ -27,6 +27,7 @@ import { getGameSpeedTimings } from './gameSpeed';
 import { getTurnHint } from './hint';
 import { buildTurnSteps } from './turnSteps';
 import { detectHumanYakuCompletion, type YakuType } from './yaku';
+import type { ViewportFocus } from '../constants/layout';
 import { useTurnAnimation } from './useTurnAnimation';
 import type { AiDifficulty, GameMode } from '../types/game';
 import type { CardId, MatgoGameState, SepCupRole } from '../types/gameState';
@@ -129,7 +130,7 @@ export function useMatgoGame(
   mode: GameMode,
   aiDifficulty: AiDifficulty,
   handMultiplier = 1,
-  prepareViewport?: () => Promise<void>,
+  prepareViewport?: (focus?: ViewportFocus) => Promise<void>,
 ) {
   const router = useRouter();
   const { settings } = useSettings();
