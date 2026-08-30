@@ -345,14 +345,14 @@ export function buildTurnSteps(
       sourceTableIndex: handPlayTarget.index,
       sourceTableCardId: handPlayTarget.cardId,
     });
-  } else {
-    steps.push({ type: 'pause', durationMs: timing.pauseAfterPlay });
   }
 
   if (flippedCard) {
-    if (handCollect.length > 0) {
-      steps.push({ type: 'pause', durationMs: timing.pauseAfterCollect });
-    }
+    steps.push({
+      type: 'pause',
+      durationMs:
+        handCollect.length > 0 ? timing.pauseAfterCollect : timing.pauseBeforeFlipDeck,
+    });
 
     const flipTarget = resolveFlipDeckTarget(
       tableBeforeFlip,

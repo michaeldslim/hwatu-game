@@ -5,7 +5,7 @@ export interface GameSpeedTimings {
   flipDeck: number;
   collect: number;
   stack: number;
-  pauseAfterPlay: number;
+  pauseBeforeFlipDeck: number;
   pauseAfterCollect: number;
   pauseAfterFlip: number;
   pauseBeforeCollect: number;
@@ -20,8 +20,8 @@ export const GAME_SPEED_TIMINGS: Record<GameSpeed, GameSpeedTimings> = {
     flipDeck: 340,
     collect: 340,
     stack: 200,
-    pauseAfterPlay: 170,
-    pauseAfterCollect: 420,
+    pauseBeforeFlipDeck: 500,
+    pauseAfterCollect: 700,
     pauseAfterFlip: 420,
     pauseBeforeCollect: 420,
     flipRevealHold: 420,
@@ -33,8 +33,8 @@ export const GAME_SPEED_TIMINGS: Record<GameSpeed, GameSpeedTimings> = {
     flipDeck: 255,
     collect: 255,
     stack: 170,
-    pauseAfterPlay: 150,
-    pauseAfterCollect: 280,
+    pauseBeforeFlipDeck: 350,
+    pauseAfterCollect: 450,
     pauseAfterFlip: 305,
     pauseBeforeCollect: 210,
     flipRevealHold: 300,
@@ -46,8 +46,8 @@ export const GAME_SPEED_TIMINGS: Record<GameSpeed, GameSpeedTimings> = {
     flipDeck: 220,
     collect: 220,
     stack: 140,
-    pauseAfterPlay: 150,
-    pauseAfterCollect: 200,
+    pauseBeforeFlipDeck: 280,
+    pauseAfterCollect: 320,
     pauseAfterFlip: 250,
     pauseBeforeCollect: 200,
     flipRevealHold: 200,
@@ -64,7 +64,7 @@ export function getGameSpeedTimings(speed: GameSpeed): GameSpeedTimings {
 export function estimateSimpleTurnMs(timing: GameSpeedTimings): number {
   return (
     timing.playHand +
-    timing.pauseAfterPlay +
+    timing.pauseBeforeFlipDeck +
     timing.flipDeck +
     timing.flipRevealHold +
     timing.pauseAfterFlip
