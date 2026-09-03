@@ -1,5 +1,13 @@
-import { useState } from 'react';
-import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useCallback, useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  type GestureResponderEvent,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { getCardById } from '../cards/getCardById';
 import { LayoutAnchor, anchorKeys } from './LayoutAnchor';
 import { CardView } from './CardView';
@@ -26,6 +34,48 @@ interface HandFanViewProps {
 
 const FAN_MAX_ROTATION = 14;
 const FAN_OVERLAP = 0.58;
+
+function getCardZIndex(
+  index: number,
+  count: number,
+  hinted: boolean,
+  highlighted: boolean,
+): number {
+  if (hinted) {
+    return count + 2;
+  }
+  if (highlighted) {
+    return count + 1;
+  }
+  return index;
+}
+
+/** Pick the visually topmost card at a horizontal tap position in the fan. */
+function pickTopCardIndex(
+  locationX: number,
+  count: number,
+  cardWidth: number,
+  step: number,
+  zIndexForIndex: (index: number) => number,
+): number {
+  let pickedIndex = -1;
+  let pickedZIndex = -1;
+
+  for (let index = 0; index < count; index += 1) {
+    const left = index * step;
+    if (locationX < left || locationX >= left + cardWidth) {
+      continue;
+    }
+
+    const zIndex = zIndexForIndex(index);
+    if (zIndex > pickedZIndex) {
+      pickedIndex = index;
+      pickedZIndex = zIndex;
+    }
+  }
+
+  return pickedIndex;
+}
 
 export function HandFanView({
   cardIds,
@@ -58,8 +108,59 @@ export function HandFanView({
   const containerHeight = cardHeight + fanPadding;
   const needsScroll = viewportWidth > 0 && totalWidth > viewportWidth;
 
+  const zIndexForIndex = useCallback(
+    (index: number) => {
+      const cardId = cardIds[index];
+      const highlighted = highlightedCardIds?.has(cardId) ?? false;
+      const hinted = hintedCardIds?.has(cardId) ?? false;
+      return getCardZIndex(index, count, hinted, highlighted);
+    },
+    [cardIds, count, highlightedCardIds, hintedCardIds],
+  );
+
+  const handleFanPress = useCallback(
+    (event: GestureResponderEvent) => {
+      if (!onCardPress || disabled) {
+        return;
+      }
+
+      const pickedIndex = pickTopCardIndex(
+        event.nativeEvent.locationX,
+        count,
+        cardWidth,
+        step,
+        zIndexForIndex,
+      );
+      if (pickedIndex < 0) {
+        return;
+      }
+
+      const cardId = cardIds[pickedIndex];
+      const playable = playableCardIds?.has(cardId) ?? true;
+      if (!playable) {
+        return;
+      }
+
+      onCardPress(cardId);
+    },
+    [
+      cardIds,
+      cardWidth,
+      count,
+      disabled,
+      onCardPress,
+      playableCardIds,
+      step,
+      zIndexForIndex,
+    ],
+  );
+
   const fan = (
-    <View style={[styles.container, { width: totalWidth, height: containerHeight }]}>
+    <Pressable
+      onPress={onCardPress ? handleFanPress : undefined}
+      disabled={disabled || !onCardPress}
+      style={[styles.container, { width: totalWidth, height: containerHeight }]}
+    >
       {cardIds.map((cardId, index) => {
         const card = getCardById(cardId);
         const offset = (index - centerIndex) / Math.max(count - 1, 1);
@@ -74,13 +175,14 @@ export function HandFanView({
           <LayoutAnchor
             key={`fan-${cardId}`}
             anchorKey={anchorKeys.hand(playerIndex, cardId)}
+            pointerEvents="none"
             style={[
               styles.cardSlot,
               fanDirection === 'up' ? styles.cardSlotUp : styles.cardSlotDown,
               {
                 left: index * step,
                 transform: [{ rotate: `${rotation}deg` }],
-                zIndex: hinted ? count + 2 : highlighted ? count + 1 : index,
+                zIndex: getCardZIndex(index, count, hinted, highlighted),
                 opacity: hidden ? 0 : 1,
               },
             ]}
@@ -89,7 +191,6 @@ export function HandFanView({
               card={card}
               size={size}
               faceDown={faceDown}
-              onPress={onCardPress ? () => onCardPress(cardId) : undefined}
               disabled={!isPlayable}
               selected={(selected && isPlayable) || highlighted}
               hinted={hinted && isPlayable}
@@ -98,7 +199,7 @@ export function HandFanView({
           </LayoutAnchor>
         );
       })}
-    </View>
+    </Pressable>
   );
 
   return (
