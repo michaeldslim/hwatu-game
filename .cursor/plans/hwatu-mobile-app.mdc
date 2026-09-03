@@ -1,6 +1,6 @@
 ---
 name: Hwatu Mobile App
-overview: React Native + Expo + TypeScript. 항상 Human vs AI. Phase 4 완료 — 고스톱 3P·화투 심플·고급 규칙(쪽·따닥·폭탄·흔들기)·정산(고박·피박·광박)·나가리·국화잔 선택. Phase 3+ polish — 약 콜아웃·gather-long·손패 가로 스크롤·보드 세로 스크롤(3P)·애니 앵커 remeasure·collect sourceTableIndex·AI 손패 mini·턴 페이싱·playHand 타겟 슬롯·특수기술 모달·**table-card 앵커 + 슬롯 타깃 비행 + 뻑 바운스 + AI 특수 햅틱만 + 손패/바닥 카드 소형화**. Post-Phase 4 — 턴 힌트(설정 토글·시안 글로우·점수+약 진행 휴리스틱). **승진제** v1 완료·수동 QA 통과(인턴→사장, 홈/결과/설정 UI, PromotionOverlay). **Mobile board UX** — 손패 하단 고정 dock·맥락별 스크롤(`ViewportFocus`)·수집 더미 maxHeight·3P AI 블록(바+더미+ownerLabel)·바닥 헤더 제거·덱 invisible anchor·AI/덱 비행 앞면. Phase 5 — EAS 빌드·스토어 배포. 딜 애니메이션·조커 카드·Career 전용 화면·Rules 승진 섹션은 미구현(optional).
+overview: React Native + Expo + TypeScript. 항상 Human vs AI. Phase 4 완료 — 고스톱 3P·화투 심플·고급 규칙(쪽·따닥·폭탄·흔들기)·정산(고박·피박·광박)·나가리·국화잔 선택. Phase 3+ polish — 약 콜아웃·gather-long·손패 가로 스크롤·보드 세로 스크롤(3P)·애니 앵커 remeasure·collect sourceTableIndex·AI 손패 mini·턴 페이싱·playHand 타겟 슬롯·특수기술 모달·**table-card 앵커 + 슬롯 타깃 비행 + 뻑 바운스 + AI 특수 햅틱만 + 손패/바닥 카드 소형화**. Post-Phase 4 — 턴 힌트(설정 토글·시안 글로우·점수+약 진행 휴리스틱). **승진제** v1 완료·수동 QA 통과(인턴→사장, 홈/결과/설정 UI, PromotionOverlay). **Mobile board UX** — 손패 하단 고정 dock·맥락별 스크롤(`ViewportFocus`)·수집 더미 maxHeight·3P AI 블록(바+더미+ownerLabel)·바닥 헤더 제거·덱 invisible anchor·AI/덱 비행 앞면. **손패 터치 UX** — `HandFanView` 좌표 기반 카드 선택(겹침 fan hit-test 수정). Phase 5 — EAS 빌드·스토어 배포. 딜 애니메이션·조커 카드·Career 전용 화면·Rules 승진 섹션은 미구현(optional).
 todos:
   - id: scaffold
     content: Expo + TypeScript 프로젝트 스캐폴딩, 앱 아이콘, 기본 폴더 구조
@@ -59,6 +59,9 @@ todos:
   - id: career-progression
     content: 승진제 메타 진행 — 인턴→사장 직급, 연승·AI 난이도 조건, 홈/결과 UI (v1 구현 + 수동 QA 통과)
     status: completed
+  - id: hand-touch-ux
+    content: 손패 fan 터치 UX — 좌표 기반 카드 선택, zIndex-aware hit-test, hidden 카드 pointerEvents 차단
+    status: completed
 isProject: true
 ---
 
@@ -81,7 +84,7 @@ Rules references:
 | **P0** | High-quality card artwork — crisp on all phone densities |
 | **P0** | Faithful Go-Stop rules (Korean standard — 도까함 guide + Instructables) |
 | **P0** | **Human vs AI only** — no local pass-and-play between humans |
-| **P1** | Smooth touch UX for selecting hand cards and table matches |
+| **P1** | Smooth touch UX for selecting hand cards ✅ and table matches |
 | **P1** | **Card motion** — play, flip, and collect animated (not instant state snap) |
 | **P1** | **AI difficulty** — 초보 / 중급 / 고급 / 전문가 (Settings; Home Play uses defaults) |
 | **P1** | 맞고 (2P vs AI) + 고스톱 (1 human + 2 AI) + 화투 심플 — all playable |
@@ -241,7 +244,7 @@ src/
   components/
     CardView.tsx           # expo-image card renderer; `hinted` cyan glow + pulse (Reanimated)
     CollectedPileView.tsx  # captured pile — 70/30 split, 광·띠·열끗 cascade + 피 grid
-    HandFanView.tsx        # fan arc + horizontal scroll; `hintedCardIds` for turn hint glow
+    HandFanView.tsx        # fan arc + horizontal scroll; coordinate tap picker (zIndex-aware); `hintedCardIds` for turn hint glow
     YakuCalloutOverlay.tsx # full-screen yaku celebration (backdrop, banner, per-yaku accent)
     FlyingCard.tsx         # Reanimated flying card overlay
     TurnAnimationOverlay.tsx
@@ -991,6 +994,7 @@ Fixed **top bar** (leave + optional **특수/Special** button when 흔들기/폭
 - **Result screen** — `app/result.tsx` with breakdown + play again
 - **Collected pile UI** — `CollectedPileView` for human + AI (`pile` card size 32×52pt); optional **`ownerLabel`**; tray **`maxHeight`** + nested vertical scroll
 - **Fan hand layout** — `HandFanView` with rotation + overlap; **horizontal scroll** when fan width exceeds viewport (narrow phones / many cards)
+- **Hand tap selection** — single fan-level `Pressable`; `pickTopCardIndex(locationX)` respects zIndex (hint/highlight boost); card slots use `pointerEvents="none"` so overlapping rects do not steal taps; engine still receives stable `CardId` (not array index)
 - Compact game header (back + turn hint only — fixed above scroll)
 - **Board layout** — scroll: AI opponent sections → table → human collected pile; **fixed bottom hand dock** (not in ScrollView)
 - **Viewport scroll** — `prepareAnimationViewport(focus?)`: `preserve` on human turn start; `{ kind: 'table' }` on AI turn / before `flipDeck`; removed `scrollTo(0)`
@@ -1193,7 +1197,7 @@ interface MatgoGameState {
 }
 ```
 
-**Phase 4 complete** — 3P gostop, hwatu simple, advanced rules, settlement, sep cup choice. **Post-Phase 4 polish** — yaku callout, gather-long on yaku, hand horizontal scroll, unified board vertical scroll (3P), `LayoutAnchor.remeasureAll`, collect `sourceTableIndex`, AI `mini` hand cards, turn pacing, play-hand target slot fix, special-move modal, home subtitle, settings-as-setup, 2P human-always-dealer, **turn hints**, **table-card anchors + slot-targeted flights + 뻑 bounce**, **AI special haptics-only**, **hand/table card sizing (64×104 / 56×91)**, **mobile board UX** (pinned hand dock, `ViewportFocus` scroll, pile maxHeight, 3P opponent sections + pile labels, invisible deck anchor, face-up AI/deck flights).
+**Phase 4 complete** — 3P gostop, hwatu simple, advanced rules, settlement, sep cup choice. **Post-Phase 4 polish** — yaku callout, gather-long on yaku, hand horizontal scroll, unified board vertical scroll (3P), `LayoutAnchor.remeasureAll`, collect `sourceTableIndex`, AI `mini` hand cards, turn pacing, play-hand target slot fix, special-move modal, home subtitle, settings-as-setup, 2P human-always-dealer, **turn hints**, **table-card anchors + slot-targeted flights + 뻑 bounce**, **AI special haptics-only**, **hand/table card sizing (64×104 / 56×91)**, **mobile board UX** (pinned hand dock, `ViewportFocus` scroll, pile maxHeight, 3P opponent sections + pile labels, invisible deck anchor, face-up AI/deck flights), **hand fan coordinate tap picker** (fix wrong-card play from overlap hit-test).
 
 ---
 
@@ -1252,6 +1256,7 @@ interface MatgoGameState {
   - [x] `TurnStep` / `FlyingCard` presentation layer
 - [x] **Yaku celebration** — `yaku.ts` + `YakuCalloutOverlay` + `gather-long.mp3` on human godori·단 complete
 - [x] **Hand scroll** — `HandFanView` horizontal scroll on narrow screens / large hands
+- [x] **Hand tap UX** — coordinate-based card pick on fan `Pressable`; zIndex-aware overlap resolution; `pointerEvents="none"` on card slots / hidden in-flight cards
 - [x] **Board scroll** — vertical `ScrollView` for AI sections + table + human pile; **human hand fixed** in `bottomHandDock`; scroll disabled during animation; `ViewportFocus` context scroll (no `scrollTo(0)`)
 - [x] **Animation anchor sync** — `remeasureAll()` + double-RAF before each turn step; collect steps carry `sourceTableIndex`
 - [x] **AI mini hand** — opponent face-down fan uses `CardSize 'mini'` (22×36pt)
@@ -1415,6 +1420,14 @@ interface MatgoGameState {
 - [x] AI hand play + deck flip: cards fly **face-up** (no back-side flight / flip-on-arrival)
 - [x] AI shake/bomb turns and AI Go callout: haptic feedback only (no play/flip/goStop sfx)
 
+## Acceptance Criteria — Hand touch UX ✅
+
+- [x] Tapping a visible hand card plays that exact `CardId` (engine path already ID-based; UI no longer mis-selects neighbor in 58% overlap fan)
+- [x] Hint/highlight boosted zIndex cards win taps in shared overlap zones
+- [x] Hidden in-flight hand cards (`hiddenCardIds`, `opacity: 0`) do not intercept taps
+- [x] Non-playable cards (AI turn, pending table choice, animation lock) ignore fan press
+- [ ] Table match tap UX — still per-card `Pressable` on table grid (no overlap issue today; revisit if table piles get denser)
+
 ## Acceptance Criteria — Turn hints ✅
 
 - [x] Settings → Gameplay → **Turn Hints** toggle (`hintsEnabled`); persists in AsyncStorage; default on
@@ -1426,6 +1439,20 @@ interface MatgoGameState {
 - [x] No-match plays prefer low-value discard; yaku-relevant cards penalized when dumping
 - [x] `ai.ts` intermediate+ hand pick and expert table pick share `hint.ts` helpers
 - [x] EN/KO strings for hints setting (`settings.hints`, `settings.hintsDesc`, `settings.gameplay`)
+
+## Android build troubleshooting
+
+If Gradle fails with a stale autolinking path (e.g. `go-stop-game/node_modules/...` after repo rename):
+
+```bash
+rm -rf android/build android/.gradle android/app/.cxx
+npx expo prebuild --platform android --no-install
+npm run android:device
+```
+
+`android/build/generated/autolinking/autolinking.json` is gitignored — regenerate instead of hand-editing. After prebuild, re-apply any intentional `android/app/build.gradle` customizations (e.g. `Hwatu-` APK/AAB rename) if Expo cleared them.
+
+---
 
 ## 참고 (미구현·개선 여지)
 
