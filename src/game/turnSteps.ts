@@ -46,6 +46,11 @@ interface TableTarget {
   cardId?: CardId;
 }
 
+export interface BuildTurnStepsOptions {
+  /** When known (human tap), skip inferring the played card from hand order diff. */
+  playedHandCardId?: CardId;
+}
+
 function findRemovedFromHand(beforeHand: CardId[], afterHand: CardId[]): CardId | null {
   for (const cardId of beforeHand) {
     if (!afterHand.includes(cardId)) {
@@ -266,6 +271,7 @@ export function buildTurnSteps(
   before: MatgoGameState,
   after: MatgoGameState,
   timing: GameSpeedTimings = getGameSpeedTimings('slow'),
+  options?: BuildTurnStepsOptions,
 ): TurnStep[] {
   if (
     after.pendingAction &&
@@ -303,6 +309,7 @@ export function buildTurnSteps(
 
   const playerIndex = before.pendingAction?.playerIndex ?? before.currentPlayerIndex;
   const playedCard =
+    options?.playedHandCardId ??
     findRemovedFromHand(before.players[playerIndex].hand, after.players[playerIndex].hand) ??
     (before.pendingAction?.type === 'chooseHandMatch' ? before.pendingAction.handCardId : null);
 

@@ -6,6 +6,7 @@ import { anchorKeys, useLayoutAnchors, type AnchorPoint } from '../components/La
 import {
   applyVisualStep,
   buildTurnSteps,
+  type BuildTurnStepsOptions,
   type TurnStep,
 } from './turnSteps';
 import type { ViewportFocus } from '../constants/layout';
@@ -199,8 +200,12 @@ export function useTurnAnimation({
   );
 
   const animateTurn = useCallback(
-    async (before: MatgoGameState, after: MatgoGameState): Promise<void> => {
-      const steps = buildTurnSteps(before, after, stepTiming);
+    async (
+      before: MatgoGameState,
+      after: MatgoGameState,
+      options?: BuildTurnStepsOptions,
+    ): Promise<void> => {
+      const steps = buildTurnSteps(before, after, stepTiming, options);
       if (steps.length === 0) {
         return;
       }

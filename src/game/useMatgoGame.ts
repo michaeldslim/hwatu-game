@@ -25,7 +25,7 @@ import {
 import { declareBomb, declareShake, canDeclareBomb, canDeclareShake } from './specialMoves';
 import { getGameSpeedTimings } from './gameSpeed';
 import { getTurnHint } from './hint';
-import { buildTurnSteps } from './turnSteps';
+import { buildTurnSteps, type BuildTurnStepsOptions } from './turnSteps';
 import { detectHumanYakuCompletion, type YakuType } from './yaku';
 import type { ViewportFocus } from '../constants/layout';
 import { useTurnAnimation } from './useTurnAnimation';
@@ -86,8 +86,24 @@ function shouldAnimate(
   before: MatgoGameState,
   after: MatgoGameState,
   timing = getGameSpeedTimings('slow'),
+  options?: BuildTurnStepsOptions,
 ): boolean {
-  return buildTurnSteps(before, after, timing).length > 0;
+  return buildTurnSteps(before, after, timing, options).length > 0;
+}
+
+function buildTurnStepOptions(
+  before: MatgoGameState,
+  action: GameReducerAction,
+): BuildTurnStepsOptions | undefined {
+  if (action.type === 'PLAY_HAND') {
+    return { playedHandCardId: action.handCardId };
+  }
+
+  if (action.type === 'CHOOSE_TABLE' && before.pendingAction?.type === 'chooseHandMatch') {
+    return { playedHandCardId: before.pendingAction.handCardId };
+  }
+
+  return undefined;
 }
 
 function detectAiGoCall(
@@ -247,6 +263,7 @@ export function useMatgoGame(
 
       const before = gameRef.current;
       const after = gameReducer(before, action);
+      const turnStepOptions = buildTurnStepOptions(before, action);
       const aiSpecialTurn = action.type === 'AI_TURN' && isAiSpecialTurn(before, after);
 
       if (aiSpecialTurn && settings.hapticsEnabled) {
@@ -257,13 +274,13 @@ export function useMatgoGame(
         void playEffects(after.soundEffects);
       }
 
-      if (!shouldAnimate(before, after, stepTiming)) {
+      if (!shouldAnimate(before, after, stepTiming, turnStepOptions)) {
         notifyTurnEvents(before, after);
         dispatch(action);
         return;
       }
 
-      await animateTurn(before, after);
+      await animateTurn(before, after, turnStepOptions);
       notifyTurnEvents(before, after);
       dispatch(action);
     },
