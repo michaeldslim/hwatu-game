@@ -1,10 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import {
   Pressable,
   ScrollView,
   StyleSheet,
   View,
-  type GestureResponderEvent,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -50,31 +49,35 @@ function getCardZIndex(
   return index;
 }
 
-/** Pick the visually topmost card at a horizontal tap position in the fan. */
-function pickTopCardIndex(
-  locationX: number,
-  count: number,
-  cardWidth: number,
-  step: number,
-  zIndexForIndex: (index: number) => number,
-): number {
-  let pickedIndex = -1;
-  let pickedZIndex = -1;
-
-  for (let index = 0; index < count; index += 1) {
-    const left = index * step;
-    if (locationX < left || locationX >= left + cardWidth) {
-      continue;
-    }
-
-    const zIndex = zIndexForIndex(index);
-    if (zIndex > pickedZIndex) {
-      pickedIndex = index;
-      pickedZIndex = zIndex;
-    }
+/** Wider spacing when the hand is small — late game has fewer cards but the same overlap ratio felt much worse. */
+function getFanStep(cardWidth: number, count: number): number {
+  if (count <= 2) {
+    return cardWidth * 0.78;
   }
+  if (count <= 4) {
+    return cardWidth * 0.68;
+  }
+  if (count <= 6) {
+    return cardWidth * 0.62;
+  }
+  return cardWidth * FAN_OVERLAP;
+}
 
-  return pickedIndex;
+/**
+ * Each card owns a disjoint horizontal tap strip so overlapping Pressables
+ * do not fight via zIndex (main source of wrong-card picks with 3–5 cards).
+ */
+function getHitStripWidth(
+  index: number,
+  count: number,
+  step: number,
+  cardWidth: number,
+  expanded: boolean,
+): number {
+  if (expanded || count === 1) {
+    return cardWidth;
+  }
+  return index < count - 1 ? step : cardWidth;
 }
 
 export function HandFanView({
@@ -102,65 +105,14 @@ export function HandFanView({
     return <View style={[styles.empty, { height: cardHeight }, style]} />;
   }
 
-  const step = cardWidth * FAN_OVERLAP;
+  const step = getFanStep(cardWidth, count);
   const totalWidth = cardWidth + step * (count - 1);
   const centerIndex = (count - 1) / 2;
   const containerHeight = cardHeight + fanPadding;
   const needsScroll = viewportWidth > 0 && totalWidth > viewportWidth;
 
-  const zIndexForIndex = useCallback(
-    (index: number) => {
-      const cardId = cardIds[index];
-      const highlighted = highlightedCardIds?.has(cardId) ?? false;
-      const hinted = hintedCardIds?.has(cardId) ?? false;
-      return getCardZIndex(index, count, hinted, highlighted);
-    },
-    [cardIds, count, highlightedCardIds, hintedCardIds],
-  );
-
-  const handleFanPress = useCallback(
-    (event: GestureResponderEvent) => {
-      if (!onCardPress || disabled) {
-        return;
-      }
-
-      const pickedIndex = pickTopCardIndex(
-        event.nativeEvent.locationX,
-        count,
-        cardWidth,
-        step,
-        zIndexForIndex,
-      );
-      if (pickedIndex < 0) {
-        return;
-      }
-
-      const cardId = cardIds[pickedIndex];
-      const playable = playableCardIds?.has(cardId) ?? true;
-      if (!playable) {
-        return;
-      }
-
-      onCardPress(cardId);
-    },
-    [
-      cardIds,
-      cardWidth,
-      count,
-      disabled,
-      onCardPress,
-      playableCardIds,
-      step,
-      zIndexForIndex,
-    ],
-  );
-
   const fan = (
-    <Pressable
-      onPress={onCardPress ? handleFanPress : undefined}
-      disabled={disabled || !onCardPress}
-      style={[styles.container, { width: totalWidth, height: containerHeight }]}
-    >
+    <View style={[styles.container, { width: totalWidth, height: containerHeight }]}>
       {cardIds.map((cardId, index) => {
         const card = getCardById(cardId);
         const offset = (index - centerIndex) / Math.max(count - 1, 1);
@@ -170,36 +122,59 @@ export function HandFanView({
         const hidden = hiddenCardIds?.has(cardId) ?? false;
         const highlighted = highlightedCardIds?.has(cardId) ?? false;
         const hinted = hintedCardIds?.has(cardId) ?? false;
+        const hitWidth = getHitStripWidth(
+          index,
+          count,
+          step,
+          cardWidth,
+          highlighted || hinted,
+        );
 
         return (
           <LayoutAnchor
             key={`fan-${cardId}`}
             anchorKey={anchorKeys.hand(playerIndex, cardId)}
-            pointerEvents="none"
+            pointerEvents={hidden ? 'none' : 'box-none'}
             style={[
               styles.cardSlot,
               fanDirection === 'up' ? styles.cardSlotUp : styles.cardSlotDown,
               {
                 left: index * step,
-                transform: [{ rotate: `${rotation}deg` }],
+                width: cardWidth,
+                height: cardHeight,
                 zIndex: getCardZIndex(index, count, hinted, highlighted),
                 opacity: hidden ? 0 : 1,
               },
             ]}
           >
-            <CardView
-              card={card}
-              size={size}
-              faceDown={faceDown}
-              disabled={!isPlayable}
-              selected={(selected && isPlayable) || highlighted}
-              hinted={hinted && isPlayable}
-              style={highlighted ? styles.highlightedCard : disabled && !highlighted && !hinted ? styles.dimmedCard : undefined}
-            />
+            <View style={[styles.cardLayer, { width: cardWidth, height: cardHeight }]}>
+              <View
+                style={[
+                  styles.cardRotate,
+                  { width: cardWidth, height: cardHeight, transform: [{ rotate: `${rotation}deg` }] },
+                ]}
+                pointerEvents="none"
+              >
+                <CardView
+                  card={card}
+                  size={size}
+                  faceDown={faceDown}
+                  disabled={!isPlayable}
+                  selected={(selected && isPlayable) || highlighted}
+                  hinted={hinted && isPlayable}
+                  style={highlighted ? styles.highlightedCard : disabled && !highlighted && !hinted ? styles.dimmedCard : undefined}
+                />
+              </View>
+              <Pressable
+                onPress={onCardPress && isPlayable ? () => onCardPress(cardId) : undefined}
+                disabled={!isPlayable || !onCardPress}
+                style={[styles.cardHit, { width: hitWidth, height: cardHeight }]}
+              />
+            </View>
           </LayoutAnchor>
         );
       })}
-    </Pressable>
+    </View>
   );
 
   return (
@@ -244,6 +219,19 @@ const styles = StyleSheet.create({
   },
   cardSlot: {
     position: 'absolute',
+  },
+  cardLayer: {
+    position: 'relative',
+  },
+  cardHit: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    zIndex: 2,
+  },
+  cardRotate: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardSlotUp: {
     bottom: 0,
