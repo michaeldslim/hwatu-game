@@ -25,4 +25,4 @@ export interface CardDefinition {
   };
 }
 
-export type CardSize = 'hand' | 'table' | 'small' | 'pile' | 'mini';
+export type CardSize = 'hand' | 'handLarge' | 'table' | 'small' | 'pile' | 'mini';
