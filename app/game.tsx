@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getCareerProgressCopy } from '../src/career/careerLabels';
 import { useCareer } from '../src/career/CareerProvider';
@@ -15,6 +15,7 @@ import { HandFanView } from '../src/components/HandFanView';
 import { LayoutAnchor, LayoutAnchorProvider, anchorKeys, useLayoutAnchors } from '../src/components/LayoutAnchor';
 import { SepCupModal } from '../src/components/SepCupModal';
 import { SpecialMoveModal } from '../src/components/SpecialMoveModal';
+import { TabletLandscapeFrame } from '../src/components/TabletLandscapeFrame';
 import { TurnAnimationOverlay } from '../src/components/TurnAnimationOverlay';
 import { YakuCalloutOverlay } from '../src/components/YakuCalloutOverlay';
 import {
@@ -22,7 +23,13 @@ import {
   getLocalizedText,
 } from '../src/constants/gameOptions';
 import { colors } from '../src/constants/colors';
-import { CARD_DIMENSIONS, TABLE_SCROLL_PADDING, type ViewportFocus } from '../src/constants/layout';
+import {
+  CARD_DIMENSIONS,
+  getBoardLayoutProfile,
+  TABLE_SCROLL_PADDING,
+  TABLET_PORTRAIT_COLLECTED_PILE_MAX_HEIGHT,
+  type ViewportFocus,
+} from '../src/constants/layout';
 import { getOpponentAvatarId, type AvatarId } from '../src/constants/avatars';
 import { expandTableCard } from '../src/game/tableCards';
 import { useMatgoGame } from '../src/game/useMatgoGame';
@@ -30,6 +37,7 @@ import { useTranslation } from '../src/i18n/useTranslation';
 import { useSettings } from '../src/settings/SettingsProvider';
 import type { AiDifficulty, GameMode } from '../src/types/game';
 import type { PlayerState } from '../src/types/gameState';
+import type { CardSize } from '../src/types/hwatu';
 import type { YakuType } from '../src/game/yaku';
 
 const YAKU_LABEL_KEYS: Record<YakuType, 'game.yaku.godori' | 'game.yaku.hongdan' | 'game.yaku.cheongdan' | 'game.yaku.chodan'> = {
@@ -81,6 +89,7 @@ function OpponentBar({
   handCountLabel,
   hiddenCardIds,
   avatarId,
+  handSize = 'mini',
 }: {
   player: PlayerState;
   playerIndex: number;
@@ -91,6 +100,7 @@ function OpponentBar({
   handCountLabel: string;
   hiddenCardIds?: Set<string>;
   avatarId: AvatarId;
+  handSize?: CardSize;
 }) {
   return (
     <View style={styles.opponentBar}>
@@ -113,7 +123,7 @@ function OpponentBar({
         hiddenCardIds={hiddenCardIds}
         faceDown
         fanDirection="down"
-        size="mini"
+        size={handSize}
         style={styles.aiHandFan}
       />
     </View>
@@ -138,6 +148,20 @@ function GameScreenContent() {
   const difficulty = parseDifficulty(params.difficulty);
   const handMultiplier = parseHandMultiplier(params.handMultiplier);
   const difficultyOption = getAiDifficultyOption(difficulty);
+
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const layoutProfile = useMemo(
+    () => getBoardLayoutProfile(windowWidth, windowHeight),
+    [windowWidth, windowHeight],
+  );
+  const isTabletPortrait = layoutProfile === 'tabletPortrait';
+  const isTabletLandscape = layoutProfile === 'tabletLandscape';
+  const humanHandSize: CardSize = isTabletPortrait ? 'handLarge' : 'hand';
+  const opponentHandSize: CardSize = isTabletPortrait ? 'handLarge' : 'mini';
+  const collectedPileSize: CardSize = isTabletPortrait ? 'small' : 'pile';
+  const collectedPileMaxHeight = isTabletPortrait
+    ? TABLET_PORTRAIT_COLLECTED_PILE_MAX_HEIGHT
+    : undefined;
 
   const prepareAnimationViewport = useCallback(async (focus?: ViewportFocus) => {
     if (focus?.kind === 'table') {
@@ -263,6 +287,10 @@ function GameScreenContent() {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
   }, [showSpecialMoveModal, settings.hapticsEnabled]);
 
+  useEffect(() => {
+    void remeasureAll();
+  }, [layoutProfile, remeasureAll]);
+
   const closeSpecialMoveModal = () => {
     specialMoveDismissedRef.current = true;
     setShowSpecialMoveModal(false);
@@ -295,9 +323,8 @@ function GameScreenContent() {
     );
   }
 
-  return (
-    <View style={styles.screen}>
-    <SafeAreaView style={styles.container}>
+  const gameMain = (
+    <SafeAreaView style={[styles.container, isTabletLandscape && styles.containerLandscape]}>
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()} hitSlop={8} disabled={isAnimating}>
           <Text style={styles.back}>{t('game.leave')}</Text>
@@ -358,6 +385,7 @@ function GameScreenContent() {
                 handCountLabel={t('game.handCount', { count: opponent.hand.length })}
                 hiddenCardIds={hiddenCards}
                 avatarId={opponentAvatarIds[opponentListIndex] ?? settings.aiAvatarId}
+                handSize={opponentHandSize}
               />
               <CollectedPileView
                 cardIds={opponent.collected}
@@ -365,6 +393,8 @@ function GameScreenContent() {
                 ownerLabel={
                   showPileOwner ? `${opponent.name} · ${t('game.collected')}` : undefined
                 }
+                cardSize={collectedPileSize}
+                maxHeight={collectedPileMaxHeight}
               />
             </View>
           );
@@ -442,6 +472,8 @@ function GameScreenContent() {
           cardIds={human.collected}
           playerIndex={humanIndex}
           ownerLabel={t('game.yourCollected')}
+          cardSize={collectedPileSize}
+          maxHeight={collectedPileMaxHeight}
         />
       </ScrollView>
 
@@ -474,6 +506,7 @@ function GameScreenContent() {
           onCardPress={playCard}
           selected={isHumanTurn && !needsTableChoice}
           disabled={!isHumanTurn || needsTableChoice || game.phase !== 'playing' || isAnimating}
+          size={humanHandSize}
           style={styles.playerHandFan}
         />
       </View>
@@ -508,6 +541,15 @@ function GameScreenContent() {
       />
 
     </SafeAreaView>
+  );
+
+  return (
+    <View style={styles.screen}>
+      {isTabletLandscape ? (
+        <TabletLandscapeFrame>{gameMain}</TabletLandscapeFrame>
+      ) : (
+        gameMain
+      )}
 
     <TurnAnimationOverlay
       activeFlight={activeFlight}
@@ -538,10 +580,15 @@ function GameScreenContent() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    backgroundColor: colors.felt,
   },
   container: {
     flex: 1,
     backgroundColor: colors.felt,
+  },
+  containerLandscape: {
+    width: '100%',
+    maxWidth: '100%',
   },
   loading: {
     flex: 1,

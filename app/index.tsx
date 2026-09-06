@@ -1,12 +1,13 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PlayerAvatar } from '../src/components/PlayerAvatar';
+import { TabletLandscapeFrame } from '../src/components/TabletLandscapeFrame';
 import { getCareerProgressCopy } from '../src/career/careerLabels';
 import { useCareer } from '../src/career/CareerProvider';
 import { colors } from '../src/constants/colors';
-import { CARD_BORDER_RADIUS } from '../src/constants/layout';
+import { CARD_BORDER_RADIUS, getBoardLayoutProfile } from '../src/constants/layout';
 import { useTranslation } from '../src/i18n/useTranslation';
 import { useSettings } from '../src/settings/SettingsProvider';
 
@@ -19,6 +20,8 @@ export default function HomeScreen() {
   const { t } = useTranslation();
   const { settings, loaded } = useSettings();
   const { careerState, loaded: careerLoaded } = useCareer();
+  const { width, height } = useWindowDimensions();
+  const isTabletLandscape = getBoardLayoutProfile(width, height) === 'tabletLandscape';
   const careerBadge =
     settings.careerModeEnabled && careerLoaded
       ? getCareerProgressCopy(t, careerState).primary
@@ -38,7 +41,7 @@ export default function HomeScreen() {
     });
   };
 
-  return (
+  const homeContent = (
     <SafeAreaView style={styles.container}>
       <View style={styles.hero}>
         <PlayerAvatar avatarId={settings.playerAvatarId} size="lg" style={styles.homeAvatar} />
@@ -81,6 +84,12 @@ export default function HomeScreen() {
       </View>
     </SafeAreaView>
   );
+
+  if (isTabletLandscape) {
+    return <TabletLandscapeFrame>{homeContent}</TabletLandscapeFrame>;
+  }
+
+  return homeContent;
 }
 
 const styles = StyleSheet.create({
