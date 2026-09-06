@@ -3,7 +3,7 @@
     "name": "Hwatu",
     "slug": "hwatu",
     "version": "3.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "platforms": ["ios", "android"],
     "icon": "./assets/icon.png",
     "scheme": "hwatu",
