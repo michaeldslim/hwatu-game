@@ -7,14 +7,12 @@ import {
 } from '../constants/layout';
 import { colors } from '../constants/colors';
 import type { CardId } from '../types/gameState';
-import type { CardDefinition, CardType } from '../types/hwatu';
+import type { CardDefinition, CardSize, CardType } from '../types/hwatu';
 import { LayoutAnchor, anchorKeys } from './LayoutAnchor';
 import { CardView } from './CardView';
 
 const SCORING_TYPES: CardType[] = ['bright', 'ribbon', 'animal'];
 
-const PILE = CARD_DIMENSIONS.pile;
-const JUNK_OVERLAP = PILE.width * 0.58;
 const JUNK_PER_ROW = 5;
 const ROW_VERTICAL_OVERLAP = 14;
 const ROW_HORIZONTAL_OFFSET = 8;
@@ -53,24 +51,32 @@ interface CollectedPileViewProps {
   playerIndex?: number;
   /** Shown above the tray so multi-player piles are identifiable */
   ownerLabel?: string;
+  /** Default `pile`; tablet portrait uses `small` */
+  cardSize?: CardSize;
+  /** Override tray scroll max height (default `COLLECTED_PILE_MAX_HEIGHT`) */
+  maxHeight?: number;
 }
 
 export function CollectedPileView({
   cardIds,
   playerIndex = 0,
   ownerLabel,
+  cardSize = 'pile',
+  maxHeight = COLLECTED_PILE_MAX_HEIGHT,
 }: CollectedPileViewProps) {
   if (cardIds.length === 0) {
     return null;
   }
 
+  const pileDims = CARD_DIMENSIONS[cardSize];
+  const junkOverlap = pileDims.width * 0.58;
   const groups = groupByType(cardIds);
   const visibleScoringTypes = SCORING_TYPES.filter((type) => groups[type].length > 0);
   const junkCards = groups.junk;
   const junkRows = chunk(junkCards, JUNK_PER_ROW);
   const cardStyle = {
-    width: PILE.width,
-    height: PILE.height,
+    width: pileDims.width,
+    height: pileDims.height,
     borderRadius: CARD_BORDER_RADIUS,
   };
 
@@ -79,7 +85,7 @@ export function CollectedPileView({
       {ownerLabel ? <Text style={styles.ownerLabel}>{ownerLabel}</Text> : null}
       <LayoutAnchor anchorKey={anchorKeys.pile(playerIndex)} style={styles.tray}>
       <ScrollView
-        style={styles.trayScroll}
+        style={[styles.trayScroll, { maxHeight }]}
         contentContainerStyle={styles.trayScrollContent}
         nestedScrollEnabled
         showsVerticalScrollIndicator={false}
@@ -108,7 +114,7 @@ export function CollectedPileView({
                     contentContainerStyle={[styles.row, styles.spreadRow]}
                   >
                     {cards.map((card) => (
-                      <CardView key={card.id} card={card} size="pile" style={cardStyle} />
+                      <CardView key={card.id} card={card} size={cardSize} style={cardStyle} />
                     ))}
                   </ScrollView>
                 </View>
@@ -132,10 +138,10 @@ export function CollectedPileView({
                       <CardView
                         key={card.id}
                         card={card}
-                        size="pile"
+                        size={cardSize}
                         style={[
                           cardStyle,
-                          index > 0 && { marginLeft: -JUNK_OVERLAP },
+                          index > 0 && { marginLeft: -junkOverlap },
                         ]}
                       />
                     ))}
@@ -173,9 +179,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(245, 230, 200, 0.12)',
   },
-  trayScroll: {
-    maxHeight: COLLECTED_PILE_MAX_HEIGHT,
-  },
+  trayScroll: {},
   trayScrollContent: {
     flexGrow: 1,
   },
