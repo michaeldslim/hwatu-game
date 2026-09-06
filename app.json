@@ -2,7 +2,7 @@
   "expo": {
     "name": "Hwatu",
     "slug": "hwatu",
-    "version": "3.0.0",
+    "version": "3.1.0",
     "orientation": "default",
     "platforms": ["ios", "android"],
     "icon": "./assets/icon.png",
@@ -45,7 +45,7 @@
     "updates": {
       "url": "https://u.expo.dev/475bf35e-d433-4087-a6a3-2b90e3ed9271"
     },
-    "runtimeVersion": "3.0.0",
+    "runtimeVersion": "3.1.0",
     "extra": {
       "router": {},
       "eas": {
