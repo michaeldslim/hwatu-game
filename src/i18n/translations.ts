@@ -69,6 +69,9 @@ export type TranslationKey =
   | 'common.back'
   | 'common.home'
   | 'common.player'
+  | 'common.rotateToPortraitTitle'
+  | 'common.rotateToPortraitBodyLine1'
+  | 'common.rotateToPortraitBodyLine2'
   | 'result.headline.win'
   | 'result.headline.lose'
   | 'result.headline.draw'
@@ -229,6 +232,9 @@ const en: Record<TranslationKey, string> = {
   'common.back': '← Back',
   'common.home': '← Home',
   'common.player': 'Player',
+  'common.rotateToPortraitTitle': 'Rotate your device',
+  'common.rotateToPortraitBodyLine1': 'Hwatu works best in portrait mode on phones.',
+  'common.rotateToPortraitBodyLine2': 'Please turn your device upright.',
   'result.headline.win': 'Congratulations!',
   'result.headline.lose': 'You lose',
   'result.headline.draw': 'Draw',
@@ -392,6 +398,9 @@ const ko: Record<TranslationKey, string> = {
   'common.back': '← 뒤로',
   'common.home': '← 홈',
   'common.player': '플레이어',
+  'common.rotateToPortraitTitle': '세로 모드로 돌려주세요',
+  'common.rotateToPortraitBodyLine1': '휴대폰에서는 세로 화면에 최적화되어 있습니다.',
+  'common.rotateToPortraitBodyLine2': '기기를 세로로 돌려 주세요.',
   'result.headline.win': '축하합니다!',
   'result.headline.lose': '패배',
   'result.headline.draw': '무승부',
