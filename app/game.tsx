@@ -291,6 +291,10 @@ function GameScreenContent() {
     void remeasureAll();
   }, [layoutProfile, remeasureAll]);
 
+  const handleLandscapeCenterLayout = useCallback(() => {
+    void remeasureAll();
+  }, [remeasureAll]);
+
   const closeSpecialMoveModal = () => {
     specialMoveDismissedRef.current = true;
     setShowSpecialMoveModal(false);
@@ -426,7 +430,7 @@ function GameScreenContent() {
               <View style={styles.deckAnchorMarker} />
             </LayoutAnchor>
             <LayoutAnchor anchorKey={anchorKeys.tableCenter} style={styles.tableCenterAnchor}>
-              {null}
+              <View style={styles.tableCenterMarker} />
             </LayoutAnchor>
             {game.table.map((tableCard, index) => {
               const card = getCardById(tableCard.cardId);
@@ -546,7 +550,9 @@ function GameScreenContent() {
   return (
     <View style={styles.screen}>
       {isTabletLandscape ? (
-        <TabletLandscapeFrame>{gameMain}</TabletLandscapeFrame>
+        <TabletLandscapeFrame onCenterLayout={handleLandscapeCenterLayout}>
+          {gameMain}
+        </TabletLandscapeFrame>
       ) : (
         gameMain
       )}
@@ -771,9 +777,17 @@ const styles = StyleSheet.create({
     height: CARD_DIMENSIONS.mini.height,
   },
   tableCenterAnchor: {
-    ...StyleSheet.absoluteFill,
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    marginLeft: -CARD_DIMENSIONS.table.width / 2,
+    marginTop: -CARD_DIMENSIONS.table.height / 2,
+    opacity: 0,
+    pointerEvents: 'none',
+  },
+  tableCenterMarker: {
+    width: CARD_DIMENSIONS.table.width,
+    height: CARD_DIMENSIONS.table.height,
   },
   tableEmptySlot: {
     width: CARD_DIMENSIONS.table.width,

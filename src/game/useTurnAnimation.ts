@@ -1,15 +1,20 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback, useRef, useState } from 'react';
+import { Dimensions } from 'react-native';
 import type { MatgoGameState, CardId } from '../types/gameState';
 import type { ActiveFlightState } from '../components/TurnAnimationOverlay';
 import { anchorKeys, useLayoutAnchors, type AnchorPoint } from '../components/LayoutAnchor';
+import {
+  getBoardLayoutProfile,
+  TABLET_LANDSCAPE_BOARD_MAX_WIDTH,
+  type ViewportFocus,
+} from '../constants/layout';
 import {
   applyVisualStep,
   buildTurnSteps,
   type BuildTurnStepsOptions,
   type TurnStep,
 } from './turnSteps';
-import type { ViewportFocus } from '../constants/layout';
 import type { GameSpeedTimings } from './gameSpeed';
 
 interface UseTurnAnimationOptions {
@@ -25,7 +30,35 @@ function delay(ms: number): Promise<void> {
 }
 
 function fallbackPoint(): AnchorPoint {
-  return { x: 200, y: 400 };
+  const { width, height } = Dimensions.get('window');
+  const profile = getBoardLayoutProfile(width, height);
+
+  if (profile === 'tabletLandscape') {
+    const boardLeft = (width - TABLET_LANDSCAPE_BOARD_MAX_WIDTH) / 2;
+    return {
+      x: boardLeft + TABLET_LANDSCAPE_BOARD_MAX_WIDTH / 2,
+      y: height * 0.45,
+    };
+  }
+
+  return { x: width / 2, y: height * 0.45 };
+}
+
+async function ensureAnchorsReady(
+  get: (key: string) => AnchorPoint | undefined,
+  remeasureAll: () => Promise<void>,
+  keys: string[],
+): Promise<void> {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await remeasureAll();
+    await waitForNextFrame();
+
+    if (keys.every((key) => get(key) != null)) {
+      return;
+    }
+
+    await delay(32);
+  }
 }
 
 function waitForNextFrame(): Promise<void> {
@@ -188,6 +221,8 @@ export function useTurnAnimation({
       }
       await remeasureAll();
       await waitForNextFrame();
+      await remeasureAll();
+      await waitForNextFrame();
 
       const flight = resolveStepFlight(step, visual);
       if (flight) {
@@ -198,6 +233,16 @@ export function useTurnAnimation({
     },
     [hapticsEnabled, prepareViewport, remeasureAll, resolveStepFlight, waitForFlight],
   );
+
+  const anchorKeysForState = useCallback((state: MatgoGameState): string[] => {
+    const keys = [anchorKeys.tableCenter, anchorKeys.deck];
+    const firstTableCard = state.table[0]?.cardId;
+    if (firstTableCard) {
+      keys.push(anchorKeys.tableCard(firstTableCard));
+    }
+    keys.push(anchorKeys.tableSlot(state.table.length));
+    return keys;
+  }, []);
 
   const animateTurn = useCallback(
     async (
@@ -217,7 +262,7 @@ export function useTurnAnimation({
       const humanIndex = before.players.findIndex((player) => player.isHuman);
       const isHumanTurn = before.currentPlayerIndex === humanIndex;
       await prepareViewport?.(isHumanTurn ? { kind: 'preserve' } : { kind: 'table' });
-      await remeasureAll();
+      await ensureAnchorsReady(get, remeasureAll, anchorKeysForState(before));
 
       for (const step of steps) {
         visual = await runStep(step, visual);
@@ -227,7 +272,7 @@ export function useTurnAnimation({
       setDisplayGame(after);
       setIsAnimating(false);
     },
-    [prepareViewport, remeasureAll, runStep, stepTiming],
+    [anchorKeysForState, get, prepareViewport, remeasureAll, runStep, stepTiming],
   );
 
   return {

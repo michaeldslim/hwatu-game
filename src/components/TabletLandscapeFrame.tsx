@@ -6,6 +6,7 @@ import { TabletSideArtwork } from './TabletSideArtwork';
 interface TabletLandscapeFrameProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
+  onCenterLayout?: () => void;
 }
 
 /**
@@ -13,12 +14,18 @@ interface TabletLandscapeFrameProps {
  * Side panels and center column are siblings (no overlay), so art is never hidden
  * behind a full-screen transparent layer.
  */
-export function TabletLandscapeFrame({ children, style }: TabletLandscapeFrameProps) {
+export function TabletLandscapeFrame({
+  children,
+  style,
+  onCenterLayout,
+}: TabletLandscapeFrameProps) {
   return (
     <View style={[styles.root, style]}>
       <View style={styles.row}>
         <TabletSideArtwork side="left" />
-        <View style={styles.centerColumn}>{children}</View>
+        <View style={styles.centerColumn} onLayout={onCenterLayout}>
+          {children}
+        </View>
         <TabletSideArtwork side="right" />
       </View>
     </View>

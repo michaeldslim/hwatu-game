@@ -1,4 +1,4 @@
-import { Modal, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { FlyingCard } from './FlyingCard';
 import type { CardId } from '../types/gameState';
 import type { AnchorPoint } from './LayoutAnchor';
@@ -22,42 +22,38 @@ interface TurnAnimationOverlayProps {
   onFlightComplete: () => void;
 }
 
+/** Same window layer as LayoutAnchor (no Modal) so measureInWindow coords match flight paths. */
 export function TurnAnimationOverlay({
   activeFlight,
   onFlightComplete,
 }: TurnAnimationOverlayProps) {
+  if (!activeFlight) {
+    return null;
+  }
+
   return (
-    <Modal
-      transparent
-      visible={activeFlight !== null}
-      animationType="none"
-      statusBarTranslucent
-      presentationStyle="overFullScreen"
-      supportedOrientations={['portrait', 'landscape']}
-    >
-      <View style={styles.overlay} pointerEvents="none" collapsable={false}>
-        {activeFlight ? (
-          <FlyingCard
-            key={activeFlight.id}
-            cardId={activeFlight.cardId}
-            from={activeFlight.from}
-            to={activeFlight.to}
-            size={activeFlight.size}
-            faceDown={activeFlight.faceDown}
-            flipOnArrival={activeFlight.flipOnArrival}
-            flipRevealHoldMs={activeFlight.flipRevealHoldMs}
-            bounceOnArrival={activeFlight.bounceOnArrival}
-            durationMs={activeFlight.durationMs}
-            onComplete={onFlightComplete}
-          />
-        ) : null}
-      </View>
-    </Modal>
+    <View style={styles.overlay} pointerEvents="none" collapsable={false}>
+      <FlyingCard
+        key={activeFlight.id}
+        cardId={activeFlight.cardId}
+        from={activeFlight.from}
+        to={activeFlight.to}
+        size={activeFlight.size}
+        faceDown={activeFlight.faceDown}
+        flipOnArrival={activeFlight.flipOnArrival}
+        flipRevealHoldMs={activeFlight.flipRevealHoldMs}
+        bounceOnArrival={activeFlight.bounceOnArrival}
+        durationMs={activeFlight.durationMs}
+        onComplete={onFlightComplete}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFill,
+    zIndex: 2000,
+    elevation: 2000,
   },
 });
