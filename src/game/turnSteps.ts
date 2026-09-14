@@ -7,6 +7,7 @@ import {
   expandTableCard,
   findTableMatchIndices,
   getCardMonth,
+  isSingleCardPile,
   removeTableCards,
 } from './tableCards';
 import { cloneGameState } from './gameUtils';
@@ -103,18 +104,38 @@ function isStackPuk(before: MatgoGameState, after: MatgoGameState, flippedCardId
   return after.statusMessage.includes('뻑') || after.statusMessage.toLowerCase().includes('stack');
 }
 
-function handMatchCollectIds(
+/** Cards taken from the table during the hand-play phase only (excludes deck-flip captures). */
+function inferHandCollectIds(
+  before: MatgoGameState,
   playedCard: CardId,
-  collected: CardId[],
-  beforeTable: CardId[],
-  afterTable: CardId[],
+  allCollected: CardId[],
 ): CardId[] {
-  if (!collected.includes(playedCard)) {
+  if (!allCollected.includes(playedCard)) {
     return [];
   }
 
-  const removedFromTable = beforeTable.filter((cardId) => !afterTable.includes(cardId));
-  return [playedCard, ...removedFromTable.filter((cardId) => collected.includes(cardId))];
+  const month = getCardMonth(playedCard);
+  const matchIndices = findTableMatchIndices(before.table, month);
+  if (matchIndices.length === 0) {
+    return [playedCard];
+  }
+
+  const ttadakSingles = matchIndices.filter((index) => isSingleCardPile(before.table[index]));
+  if (ttadakSingles.length >= 2) {
+    const ttadakIds = ttadakSingles.flatMap((index) => expandTableCard(before.table[index]));
+    if (ttadakIds.every((cardId) => allCollected.includes(cardId))) {
+      return [playedCard, ...ttadakIds.filter((cardId) => allCollected.includes(cardId))];
+    }
+  }
+
+  for (const index of matchIndices) {
+    const pileIds = expandTableCard(before.table[index]);
+    if (pileIds.some((cardId) => allCollected.includes(cardId))) {
+      return [playedCard, ...pileIds.filter((cardId) => allCollected.includes(cardId))];
+    }
+  }
+
+  return [playedCard];
 }
 
 function findCollectedPileIndex(table: TableCard[], collectedIds: CardId[]): number | null {
@@ -319,11 +340,9 @@ export function buildTurnSteps(
 
   const steps: TurnStep[] = [];
   const allCollected = newlyCollected(before, after, playerIndex);
-  const beforeTable = tableCardIds(before);
-  const afterTable = tableCardIds(after);
   const flippedCard = findFlippedCard(before, after);
 
-  const handCollect = handMatchCollectIds(playedCard, allCollected, beforeTable, afterTable);
+  const handCollect = inferHandCollectIds(before, playedCard, allCollected);
   const flipCollect = flippedCard
     ? allCollected.filter((cardId) => !handCollect.includes(cardId))
     : [];
