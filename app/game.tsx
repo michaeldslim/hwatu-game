@@ -31,6 +31,7 @@ import {
   type ViewportFocus,
 } from '../src/constants/layout';
 import { getOpponentAvatarId, type AvatarId } from '../src/constants/avatars';
+import { TablePileView } from '../src/components/TablePileView';
 import { expandTableCard } from '../src/game/tableCards';
 import { useMatgoGame } from '../src/game/useMatgoGame';
 import { useTranslation } from '../src/i18n/useTranslation';
@@ -433,27 +434,25 @@ function GameScreenContent() {
               <View style={styles.tableCenterMarker} />
             </LayoutAnchor>
             {game.table.map((tableCard, index) => {
-              const card = getCardById(tableCard.cardId);
               const stackSize = expandTableCard(tableCard).length;
               const choosable = choosableTableIndices.has(index);
               const hinted = hintedTableIndex === index;
-              const hidden = hiddenCards?.has(tableCard.cardId);
 
               return (
                 <LayoutAnchor
-                  key={`table-card-${tableCard.cardId}`}
+                  key={`table-pile-${index}-${tableCard.cardId}`}
                   anchorKey={anchorKeys.tableCard(tableCard.cardId)}
                   style={[styles.tableItem, choosable && styles.tableItemChoosable]}
                 >
-                  <CardView
-                    card={card}
+                  <TablePileView
+                    tableCard={tableCard}
                     size="table"
                     onPress={choosable ? () => chooseTable(index) : undefined}
                     choosable={choosable}
                     hinted={hinted}
-                    style={hidden ? styles.hidden : undefined}
+                    hiddenCardIds={hiddenCards}
                   />
-                  {stackSize > 1 ? (
+                  {stackSize > 2 ? (
                     <Text style={styles.stackLabel}>
                       {t('game.stack', { count: stackSize })}
                     </Text>
@@ -799,9 +798,6 @@ const styles = StyleSheet.create({
   },
   tableItemChoosable: {
     zIndex: 2,
-  },
-  hidden: {
-    opacity: 0,
   },
   stackLabel: {
     color: colors.cream,
