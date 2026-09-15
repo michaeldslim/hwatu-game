@@ -22,7 +22,13 @@ import {
   playBomb,
   playHandCard,
 } from './turnEngine';
-import { declareBomb, declareShake, canDeclareBomb, canDeclareShake } from './specialMoves';
+import {
+  canDeclareBomb,
+  canDeclareShake,
+  canExecuteBomb,
+  declareBomb,
+  declareShake,
+} from './specialMoves';
 import { getGameSpeedTimings } from './gameSpeed';
 import { getTurnHint } from './hint';
 import { buildTurnSteps, type BuildTurnStepsOptions } from './turnSteps';
@@ -381,16 +387,23 @@ export function useMatgoGame(
     return getTurnHint(boardGame);
   }, [boardGame, isAnimating, settings.hintsEnabled]);
 
-  const canShake =
-    isHumanTurn(boardGame) &&
-    !isAnimating &&
-    canDeclareShake(boardGame, boardGame.currentPlayerIndex) &&
-    boardGame.players[boardGame.currentPlayerIndex].scoreMultiplier === 1;
+  const humanPlayerIndex = humanIndex >= 0 ? humanIndex : boardGame.currentPlayerIndex;
+  const humanCanAct = isHumanTurn(boardGame) && !isAnimating;
 
-  const canBomb =
-    isHumanTurn(boardGame) &&
-    !isAnimating &&
-    canDeclareBomb(boardGame, boardGame.currentPlayerIndex);
+  const canShake =
+    humanCanAct &&
+    canDeclareShake(boardGame, humanPlayerIndex) &&
+    boardGame.players[humanPlayerIndex].scoreMultiplier === 1;
+
+  const canDeclareBombOption =
+    humanCanAct &&
+    boardGame.players[humanPlayerIndex].scoreMultiplier === 1 &&
+    canDeclareBomb(boardGame, humanPlayerIndex);
+
+  const canExecuteBombOption =
+    humanCanAct && canExecuteBomb(boardGame, humanPlayerIndex);
+
+  const canBomb = canDeclareBombOption || canExecuteBombOption;
 
   useEffect(() => {
     if (
@@ -444,6 +457,7 @@ export function useMatgoGame(
     showSepCupModal: needsHumanSepCupChoice(boardGame) && !isAnimating,
     canShake,
     canBomb,
+    canExecuteBomb: canExecuteBombOption,
     isAnimating,
     activeFlight,
     onFlightComplete,

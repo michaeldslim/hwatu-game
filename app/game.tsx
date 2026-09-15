@@ -198,6 +198,7 @@ function GameScreenContent() {
     showSepCupModal,
     canShake,
     canBomb,
+    canExecuteBomb,
     isAnimating,
     activeFlight,
     onFlightComplete,
@@ -236,8 +237,7 @@ function GameScreenContent() {
   const hintedTableIndex = turnHint?.tableIndex ?? null;
   const difficultyLabel = getLocalizedText(language, difficultyOption.labels);
   const hasSpecialMoves = canShake || canBomb;
-  const bombDeclared =
-    humanIndex >= 0 && game.players[humanIndex].scoreMultiplier > 1 && canBomb;
+  const bombDeclared = canExecuteBomb;
   const careerChip =
     settings.careerModeEnabled && careerLoaded
       ? getCareerProgressCopy(t, careerState).primary
@@ -515,34 +515,6 @@ function GameScreenContent() {
       </View>
       </View>
 
-      <SpecialMoveModal
-        visible={showSpecialMoveModal}
-        language={language}
-        canShake={canShake}
-        canBomb={canBomb}
-        bombDeclared={bombDeclared}
-        onShake={handleShake}
-        onBomb={handleBomb}
-        onClose={closeSpecialMoveModal}
-      />
-
-      <GoStopModal
-        visible={showGoStopModal}
-        score={human.score}
-        targetScore={game.targetScore}
-        goCount={human.goCount}
-        language={language}
-        onGo={callGo}
-        onStop={callStop}
-      />
-
-      <SepCupModal
-        visible={showSepCupModal}
-        language={language}
-        onAnimal={() => chooseSepCup('animal')}
-        onJunk={() => chooseSepCup('junk')}
-      />
-
     </SafeAreaView>
   );
 
@@ -578,6 +550,34 @@ function GameScreenContent() {
       }
       onComplete={dismissGoCallout}
     />
+
+      <SpecialMoveModal
+        visible={showSpecialMoveModal}
+        language={language}
+        canShake={canShake}
+        canBomb={canBomb}
+        bombDeclared={bombDeclared}
+        onShake={handleShake}
+        onBomb={handleBomb}
+        onClose={closeSpecialMoveModal}
+      />
+
+      <GoStopModal
+        visible={showGoStopModal}
+        score={human.score}
+        targetScore={game.targetScore}
+        goCount={human.goCount}
+        language={language}
+        onGo={callGo}
+        onStop={callStop}
+      />
+
+      <SepCupModal
+        visible={showSepCupModal}
+        language={language}
+        onAnimal={() => chooseSepCup('animal')}
+        onJunk={() => chooseSepCup('junk')}
+      />
     </View>
   );
 }

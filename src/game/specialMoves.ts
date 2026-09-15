@@ -90,6 +90,28 @@ export function canDeclareBomb(state: MatgoGameState, playerIndex: PlayerIndex):
   return state.table.some((tableCard) => getMonthFromId(tableCard.cardId) === shakeMonth);
 }
 
+/** 폭탄 선언 후 같은 턴에 3장 내기 — declare 조건과 별도 */
+export function canExecuteBomb(state: MatgoGameState, playerIndex: PlayerIndex): boolean {
+  if (state.phase !== 'playing' || state.pendingAction) {
+    return false;
+  }
+  if (state.currentPlayerIndex !== playerIndex) {
+    return false;
+  }
+
+  const player = state.players[playerIndex];
+  if (player.scoreMultiplier <= 1) {
+    return false;
+  }
+
+  const bombLabel = SPECIAL_MOVE_LABELS.bomb.ko;
+  if (!state.turnSpecialMoves.includes(bombLabel)) {
+    return false;
+  }
+
+  return getBombCardIds(state, playerIndex).length >= 3;
+}
+
 export function declareShake(state: MatgoGameState, playerIndex: PlayerIndex): MatgoGameState {
   if (!canDeclareShake(state, playerIndex)) {
     return state;

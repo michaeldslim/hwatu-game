@@ -26,9 +26,15 @@ export function SpecialMoveModal({
   const isKo = language === 'ko';
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
       <View style={styles.backdrop}>
-        <View style={styles.card}>
+        <View style={styles.card} onStartShouldSetResponder={() => true}>
           <Text style={styles.title}>{isKo ? '특수 기술' : 'Special Moves'}</Text>
           <Text style={styles.subtitle}>
             {isKo
