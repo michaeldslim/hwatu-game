@@ -432,10 +432,19 @@ export function applyVisualStep(state: MatgoGameState, step: TurnStep): MatgoGam
         ...player,
         hand: player.hand.filter((cardId) => cardId !== step.cardId),
       };
-      if (
-        !next.players[step.playerIndex].collected.includes(step.cardId) &&
-        step.targetTableIndex >= next.table.length
-      ) {
+      const playerAfter = next.players[step.playerIndex];
+      if (playerAfter.collected.includes(step.cardId)) {
+        return next;
+      }
+      if (step.targetTableIndex < next.table.length) {
+        const pile = next.table[step.targetTableIndex];
+        if (pile) {
+          const merged = createStackedTableCard([...expandTableCard(pile), step.cardId]);
+          next.table = next.table.map((tableCard, index) =>
+            index === step.targetTableIndex ? merged : tableCard,
+          );
+        }
+      } else {
         next.table = addTableCard(next.table, step.cardId);
       }
       return next;
@@ -470,12 +479,19 @@ export function applyVisualStep(state: MatgoGameState, step: TurnStep): MatgoGam
       next.deck = next.deck.slice(1);
       next.lastFlippedCardId = step.cardId;
       const flipPlayer = next.players[next.currentPlayerIndex];
+      if (flipPlayer.collected.includes(step.cardId) || tableCardIds(next).includes(step.cardId)) {
+        return next;
+      }
       const landingOnExistingPile = step.targetTableIndex < next.table.length;
-      if (
-        !landingOnExistingPile &&
-        !flipPlayer.collected.includes(step.cardId) &&
-        !tableCardIds(next).includes(step.cardId)
-      ) {
+      if (landingOnExistingPile) {
+        const pile = next.table[step.targetTableIndex];
+        if (pile) {
+          const merged = createStackedTableCard([...expandTableCard(pile), step.cardId]);
+          next.table = next.table.map((tableCard, index) =>
+            index === step.targetTableIndex ? merged : tableCard,
+          );
+        }
+      } else {
         next.table = addTableCard(next.table, step.cardId);
       }
       return next;
